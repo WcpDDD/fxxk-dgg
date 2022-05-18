@@ -48,9 +48,9 @@ setTimeout(() => {
     }
 
     const start = () => {
+        debug('开始监听签到按钮');
         setInterval(() => {
-            debug('开始监听签到按钮');
-            const countDown = document.querySelector('.countdown-container');
+            const countDown = document.querySelector('.countdown-container,div[class^="countdown_container"]');
             if (!!countDown) {
                 debug('检测到签到按钮');
                 countDown.click();
@@ -63,6 +63,56 @@ setTimeout(() => {
                 }, 3000);
             }
         }, 3000);
+
+        // 检查进度条进度
+        debug('开始监听进度条进度');
+        let f = null;
+        let status = 0;
+
+        const nextVideo = () => {
+            try {
+                const videoList = document.querySelectorAll('div[class^="c_menu"] div[class^="c_tab_no_desc"] div[class^="c_catalog"] div[class^="c_item__"]');
+                if (!!videoList) {
+                    for (let i = videoList.length - 1; i >= 0; i --) {
+                        // 找到当前页面激活的视频
+                        const video = videoList[i];
+                        const clazzNames = [...video.classList].filter(item => item.startsWith('active'));
+                        // 找到处于激活状态的视频 如果不是最后一个视频 则切换到下一个视频
+                        if (clazzNames.length > 0 && i < (videoList.length - 1)) {
+                            videoList[i + 1].querySelector('div[class^="c_item_main"]>div').click();
+                            break;
+                        }
+                    }
+                }
+            } catch (e) {
+                debug(e.message)
+            } finally {
+                // 不管视频有没切换成功 均重置状态
+                status = 0;
+            }
+        }
+
+        const progressListener = () => {
+            const progress = document.querySelector('.prism-progress-played');
+            if (!!progress) {
+                const width = parseInt(progress.style.width.replace('%', ''));
+                if (width > 25 && status === 0) {
+                    debug('进度条已超过四分之一');
+                    status = 1;
+                } else if (width > 50 && status === 1) {
+                    debug('进度条已过半');
+                    status = 2
+                } else if (width > 75 && status === 2) {
+                    debug('进度条已超过四分之三');
+                    status = 3;
+                } else if (width >= 99 && status === 3) {
+                    debug('即将看完，切换至下一视频');
+                    setTimeout(nextVideo, 4000);
+                }
+            }
+        }
+
+        f = setInterval(progressListener, 3000);
     }
 
     const f = setInterval(() => {
@@ -75,5 +125,4 @@ setTimeout(() => {
         start();
         clearInterval(f);
     }, 3000);
-
 }, 10 * 1000);

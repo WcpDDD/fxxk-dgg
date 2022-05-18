@@ -5,7 +5,7 @@ const listPageFilter = async (url, request, response) => {
         const {
             response: newResponse
         } = response;
-        const content = fs.readFileSync('./inject.js').toString();
+        const content = fs.readFileSync('./script/src/rules/inject.js').toString();
         const myBodyStr = newResponse.body.toString().replace(`</html>`, `
         <script type="text/javascript">
             ${content}

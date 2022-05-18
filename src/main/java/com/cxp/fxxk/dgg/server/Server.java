@@ -84,6 +84,9 @@ public class Server implements ApplicationListener<ApplicationReadyEvent> {
                 log.info("尝试关闭注入进程");
                 finalProcess.destroy();
             });
+        } else if (osName.toLowerCase().contains("mac")) {
+            process = Runtime.getRuntime().exec("./darwin/bin/node ./script/src/main.js");
+            log.info("脚本注入进程启动成功");
         }
     }
 }
