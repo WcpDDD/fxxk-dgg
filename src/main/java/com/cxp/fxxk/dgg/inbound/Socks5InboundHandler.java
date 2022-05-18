@@ -1,14 +1,14 @@
 package com.cxp.fxxk.dgg.inbound;
 
+import com.cxp.fxxk.dgg.proxy.DingdaxueHosts;
+import com.cxp.fxxk.dgg.proxy.ProxyBuilder;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.HttpClientCodec;
-import io.netty.handler.codec.http.HttpResponseDecoder;
-import io.netty.handler.codec.http.HttpResponseEncoder;
-import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.socksx.v5.*;
+import io.netty.resolver.InetSocketAddressResolver;
+import io.netty.resolver.NoopAddressResolverGroup;
 import io.netty.util.ReferenceCountUtil;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +34,24 @@ public class Socks5InboundHandler extends SimpleChannelInboundHandler<DefaultSoc
         }
 
         log.debug("准备连接目标服务器，ip={},port={}", msg.dstAddr(), msg.dstPort());
+
+        // 如果地址类型为ipv4 则查询是否为云课堂ip
+        // 如果地址类型为域名 则查询是否为云课堂域名
+        // 其余的均不走代理
+        boolean isProxy = false;
+
+        if (socks5AddressType.equals(Socks5AddressType.IPv4)) {
+            if (DingdaxueHosts.isIpProxy(msg.dstAddr())) {
+                isProxy = true;
+            }
+        } else if (socks5AddressType.equals(Socks5AddressType.DOMAIN)) {
+            if (DingdaxueHosts.isDomainProxy(msg.dstAddr())) {
+                isProxy = true;
+            }
+        }
+
         Bootstrap bootstrap = new Bootstrap();
+        boolean finalIsProxy = isProxy;
         bootstrap.group(eventExecutors)
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.TCP_NODELAY, true)
@@ -42,12 +59,17 @@ public class Socks5InboundHandler extends SimpleChannelInboundHandler<DefaultSoc
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
                         //添加服务端写客户端的Handler
-//                        ch.pipeline().addLast(new HttpResponseDecoder());
+
+                        if (finalIsProxy) {
+                            log.info("检测到云课堂流量，添加代理");
+                            ch.pipeline().addLast(ProxyBuilder.createHttpProxyHandler());
+                        }
                         ch.pipeline().addLast(new Dest2ClientInboundHandler(ctx));
                     }
                 });
 
-        ChannelFuture future = bootstrap.connect(msg.dstAddr(), msg.dstPort());
+        ChannelFuture future = isProxy ? bootstrap.connect(DingdaxueHosts.getHostName(), msg.dstPort())
+                : bootstrap.connect(msg.dstAddr(), msg.dstPort());
         future.addListener((ChannelFutureListener) future1 -> {
             if (future1.isSuccess()) {
                 log.debug("目标服务器连接成功");
@@ -65,4 +87,5 @@ public class Socks5InboundHandler extends SimpleChannelInboundHandler<DefaultSoc
             }
         });
     }
+
 }

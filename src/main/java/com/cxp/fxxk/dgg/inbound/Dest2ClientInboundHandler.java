@@ -20,7 +20,6 @@ public class Dest2ClientInboundHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        log.info("target地址:" + ctx.channel().remoteAddress());
         clientChannelHandlerContext.writeAndFlush(msg);
     }
 

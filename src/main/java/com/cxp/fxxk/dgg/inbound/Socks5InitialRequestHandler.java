@@ -15,8 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 public class Socks5InitialRequestHandler extends SimpleChannelInboundHandler<DefaultSocks5InitialRequest> {
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DefaultSocks5InitialRequest msg) throws Exception {
-        log.info("socks5连接初始化");
-
         boolean failure = msg.decoderResult().isFailure();
 
         if (failure) {

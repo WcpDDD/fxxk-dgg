@@ -14,6 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
+import sun.misc.Signal;
+
+import java.io.IOException;
 
 /**
  * @author chenxinpei
@@ -54,12 +57,33 @@ public class Server implements ApplicationListener<ApplicationReadyEvent> {
                     });
             ChannelFuture future = server.bind(8001).sync();
             log.info("socks5 netty server has started on port 8001");
+
+            startInjectProcess();
+
             future.channel().closeFuture().sync();
         } catch (InterruptedException e) {
             e.printStackTrace();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+        }
+    }
+
+    private void startInjectProcess() throws IOException {
+        // 获取当前系统信息 如果为windows 则执行windows相关操作
+        String osName = System.getProperty("os.name");
+        Process process = null;
+        if (osName.contains("Windows")) {
+            // windows系统 执行windows相关逻辑
+            process = Runtime.getRuntime().exec("cmd /k start ./windows/node.exe ./script/src/main.js");
+            log.info("脚本注入进程启动成功");
+            Process finalProcess = process;
+            Signal.handle(new Signal("TERM"), sig -> {
+                log.info("尝试关闭注入进程");
+                finalProcess.destroy();
+            });
         }
     }
 }
